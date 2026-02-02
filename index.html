@@ -14,7 +14,7 @@
       width:100%;
       height:100%;
       background:transparent;
-      overflow:hidden; /* 🔑 kill scrollbars */
+      overflow:hidden;
       font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
@@ -24,47 +24,45 @@
       justify-content:center;
     }
 
-    .picker-wrap{
+    .picker-card{
+      width:320px;
+      height:260px; /* 🔑 fixed height = no scroll */
       display:flex;
       flex-direction:column;
+      justify-content:space-between;
       align-items:center;
-      gap:8px;
-      max-height:100%;
+      gap:6px;
     }
 
     #picker{
-      background:transparent;
-      flex-shrink:0;
+      width:100%;
     }
 
     .color-info{
       display:flex;
       align-items:center;
-      gap:8px;
-      flex-shrink:0;
+      gap:10px;
     }
 
     .swatch{
-      width:24px;
-      height:24px;
+      width:26px;
+      height:26px;
       border-radius:6px;
-      background:#000;
-      box-shadow:0 0 0 1px rgba(0,0,0,0.15);
+      box-shadow:0 0 0 1px rgba(0,0,0,0.2);
     }
 
     .hex{
       font-size:13px;
-      letter-spacing:0.04em;
       font-weight:600;
+      letter-spacing:0.04em;
       color:#222;
       user-select:all;
-      white-space:nowrap;
     }
   </style>
 </head>
 
 <body>
-  <div class="picker-wrap">
+  <div class="picker-card">
     <div id="picker"></div>
 
     <div class="color-info">
@@ -75,62 +73,44 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-    const startHex = (qs.get("hex") || "ff8800").replace("#","");
-
-    // Fit picker to viewport height
-    const VH = window.innerHeight;
-
-    // Layout math (tuned to avoid overflow)
-    const WHEEL_SIZE = Math.min(160, VH * 0.35);
-    const WHEEL_THICKNESS = 14;
-
-    const BOX_WIDTH = Math.min(340, VH * 0.7);
-    const BOX_HEIGHT = Math.round(BOX_WIDTH / 2);
+    const startHex = (qs.get("hex") || "ff0000").replace("#","");
 
     const swatch = document.getElementById("swatch");
     const hexText = document.getElementById("hexText");
 
     const picker = new iro.ColorPicker("#picker", {
-      width: BOX_WIDTH,
+      width: 300,
       color: "#" + startHex,
       layout: [
         {
-          component: iro.ui.Wheel,
+          component: iro.ui.Box,
           options: {
-            width: WHEEL_SIZE,
-            borderWidth: WHEEL_THICKNESS
+            boxHeight: 150   // main SV area
           }
         },
         {
-          component: iro.ui.Box,
+          component: iro.ui.Slider,
           options: {
-            boxHeight: BOX_HEIGHT
+            sliderType: "hue",
+            height: 12     // thin embedded hue bar (PS-style)
           }
         }
       ]
     });
 
-    function updateUI(hexWithHash){
-      const hex = hexWithHash.toUpperCase();
-      swatch.style.background = hex;
-      hexText.textContent = hex;
+    function update(hex){
+      const h = hex.toUpperCase();
+      swatch.style.background = h;
+      hexText.textContent = h;
+
+      try {
+        window.parent.postMessage({ type:"TT_HEX", hex:h }, "*");
+      } catch(e){}
     }
 
-    function sendHex(hexWithHash){
-      const payload = { type: "TT_HEX", hex: hexWithHash.toUpperCase() };
-      try { window.parent.postMessage(payload, "*"); } catch(e) {}
-    }
+    update(picker.color.hexString);
 
-    updateUI(picker.color.hexString);
-    sendHex(picker.color.hexString);
-
-    picker.on("color:change", function(color){
-      updateUI(color.hexString);
-      sendHex(color.hexString);
-    });
-
-    // Safety: prevent resize scrollbars
-    window.addEventListener("resize", () => location.reload());
+    picker.on("color:change", c => update(c.hexString));
   </script>
 </body>
 </html>
