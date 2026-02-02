@@ -44,29 +44,44 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.12);
     }
 
-    input, button {
+    /* HEX-as-button */
+    #hex {
       width: 100%;
       display: block;
-    }
-
-    input {
       padding: 10px;
       font-size: 15px;
       border-radius: 8px;
       border: 1px solid #ccc;
       text-align: center;
-      font-weight: 600;
-      letter-spacing: 0.5px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      user-select: text; /* allows fallback select */
+      -webkit-user-select: text;
+      background: #fff;
+      transition: transform 0.02s ease;
     }
 
-    button {
-      padding: 10px;
-      font-size: 15px;
-      border-radius: 8px;
-      border: 0;
-      background: #111;
-      color: #fff;
-      cursor: pointer;
+    #hex:active {
+      transform: scale(0.995);
+    }
+
+    .hint {
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      color: rgba(0,0,0,0.65);
+      line-height: 1.2;
+    }
+
+    /* tiny “toast” feedback */
+    .toast {
+      width: 100%;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(0,0,0,0.8);
+      height: 14px; /* reserves space so layout doesn't jump */
     }
   </style>
 </head>
@@ -75,8 +90,10 @@
   <div class="wrap" id="wrap">
     <div id="picker"></div>
     <div id="swatch" class="swatch"></div>
-    <input id="hex" readonly />
-    <button id="copy">Copy</button>
+
+    <input id="hex" readonly value="#FF8800" />
+    <div class="hint">Tap the HEX code to copy</div>
+    <div id="toast" class="toast"></div>
   </div>
 
   <script src="https://unpkg.com/@jaames/iro@5"></script>
@@ -85,16 +102,15 @@
     const pickerHost = document.getElementById("picker");
     const hexEl = document.getElementById("hex");
     const swatch = document.getElementById("swatch");
-    const copyBtn = document.getElementById("copy");
+    const toast = document.getElementById("toast");
 
     let picker;
     let lastWidth = 0;
     let lastHex = "#FF8800";
+    let toastTimer = null;
 
     function getAvailableWidth() {
-      // Measure the Bubble webview element itself
       const w = Math.round(wrap.clientWidth || 0);
-      // Guard against 0 during initial layout
       return w > 0 ? w : Math.round(document.documentElement.clientWidth || window.innerWidth || 250);
     }
 
@@ -105,18 +121,35 @@
       lastHex = H;
     }
 
+    function showToast(msg) {
+      toast.textContent = msg;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => (toast.textContent = ""), 900);
+    }
+
+    async function copyHex() {
+      const text = hexEl.value;
+
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Copied!");
+      } catch (e) {
+        // Fallback: select so user can long-press copy
+        hexEl.focus();
+        hexEl.select();
+        showToast("Select to copy");
+      }
+    }
+
     function buildPicker(force = false) {
       const width = getAvailableWidth();
       if (!force && width === lastWidth) return;
       lastWidth = width;
 
-      // 2:1 gradient area
-      const boxHeight = Math.round(width / 2);
+      const boxHeight = Math.round(width / 2); // 2:1 box
 
-      // Ensure host matches exactly to avoid 1px overflow -> scrollbars
       pickerHost.style.width = width + "px";
 
-      // Preserve current color across rebuilds
       const currentHex = picker ? picker.color.hexString : (lastHex || "#FF8800");
 
       if (picker) picker.destroy();
@@ -131,35 +164,24 @@
       });
 
       setUI(picker.color.hexString);
-
       picker.on("color:change", (color) => setUI(color.hexString));
     }
+
+    // Tap HEX to copy
+    hexEl.addEventListener("click", copyHex);
 
     // Initial build
     buildPicker(true);
 
-    // ✅ Key fix: observe container width changes (Bubble resizing often won't fire window.resize)
+    // Observe Bubble container size changes
     if ("ResizeObserver" in window) {
       const ro = new ResizeObserver(() => buildPicker(false));
       ro.observe(wrap);
     } else {
-      // Fallback for older webviews
       setInterval(() => buildPicker(false), 200);
     }
 
-    // Keep window resize too (helps in normal browsers)
     window.addEventListener("resize", () => buildPicker(false));
-
-    copyBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(hexEl.value);
-        copyBtn.textContent = "Copied!";
-        setTimeout(() => copyBtn.textContent = "Copy", 900);
-      } catch {
-        hexEl.focus();
-        hexEl.select();
-      }
-    });
   </script>
 </body>
 </html>
