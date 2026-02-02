@@ -11,7 +11,7 @@
   body {
     margin: 0;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #ffffff;
+    background: transparent;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -32,7 +32,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    margin-bottom: 14px;
+    margin-bottom: 6px;
   }
 
   .swatch {
@@ -49,19 +49,10 @@
     text-align: center;
   }
 
-  button {
-    width: 100%;
-    padding: 12px;
-    font-size: 18px;
-    font-weight: 700;
-    background: linear-gradient(#ffd94d, #f5b400);
-    border: 2px solid #6b4b00;
-    border-radius: 10px;
-    cursor: pointer;
-  }
-
-  button:active {
-    transform: scale(0.98);
+  .hint {
+    font-size: 12px;
+    opacity: 0.65;
+    margin-top: 6px;
   }
 </style>
 </head>
@@ -75,41 +66,67 @@
     <input id="hex" value="#FF8800" />
   </div>
 
-  <button id="calc">CALCULATE</button>
+  <div class="hint">Pick a color. The app will use this HEX.</div>
 </div>
 
 <script>
   const hexInput = document.getElementById("hex");
   const swatch = document.getElementById("swatch");
-  const button = document.getElementById("calc");
+
+  // Read optional starting color from ?hex=ff8800
+  const params = new URLSearchParams(window.location.search);
+  const startHex = params.get("hex");
+  const initial = (startHex && /^[0-9a-fA-F]{6}$/.test(startHex))
+    ? "#" + startHex.toUpperCase()
+    : "#FF8800";
 
   const picker = new iro.ColorPicker("#picker", {
     width: 280,
-    color: "#FF8800",
+    color: initial,
     layout: [
       { component: iro.ui.Box },
       { component: iro.ui.Slider, options: { sliderType: "hue" } }
     ]
   });
 
-  function sync(hex) {
-    hexInput.value = hex.toUpperCase();
-    swatch.style.background = hex;
+  function broadcast(hex) {
+    // Send to parent (Bubble)
+    try {
+      window.parent.postMessage(
+        { type: "TERRATECH_COLOR", hex: hex.toUpperCase(), ts: Date.now() },
+        "*"
+      );
+    } catch (e) {}
   }
+
+  function sync(hex) {
+    const up = hex.toUpperCase();
+    hexInput.value = up;
+    swatch.style.background = up;
+
+    // Keep URL updated for debugging/share
+    const url = new URL(window.location.href);
+    url.searchParams.set("hex", up.replace("#", ""));
+    history.replaceState({}, "", url);
+
+    broadcast(up);
+  }
+
+  // Initial sync + broadcast
+  sync(picker.color.hexString);
 
   picker.on("color:change", c => sync(c.hexString));
 
   hexInput.addEventListener("change", () => {
     picker.color.hexString = hexInput.value;
+    sync(picker.color.hexString);
   });
 
-  button.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(hexInput.value);
-      button.textContent = "SAVED ✓";
-      setTimeout(() => button.textContent = "CALCULATE", 900);
-    } catch {
-      alert("Copy failed — please copy manually.");
+  // If the parent asks for the current color, respond.
+  window.addEventListener("message", (event) => {
+    const msg = event.data;
+    if (msg && msg.type === "TERRATECH_REQUEST_COLOR") {
+      broadcast(hexInput.value);
     }
   });
 </script>
