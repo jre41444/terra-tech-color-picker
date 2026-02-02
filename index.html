@@ -6,7 +6,6 @@
   <title>Terra-Tech Color Picker</title>
 
   <style>
-    /* Kill scrollbars + default spacing */
     html, body {
       margin: 0;
       padding: 0;
@@ -16,10 +15,8 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
-    /* Also disable any accidental horizontal overflow from shadows/borders */
     * { box-sizing: border-box; }
 
-    /* Wrapper = EXACTLY the WebView width (no auto-centering) */
     .wrap {
       width: 100%;
       margin: 0;
@@ -30,13 +27,11 @@
       overflow: hidden !important;
     }
 
-    /* Ensure iro container itself can’t cause overflow */
     #picker {
       width: 100%;
       overflow: hidden !important;
     }
 
-    /* Helps avoid inline element whitespace/overflow */
     #picker, #picker * {
       max-width: 100% !important;
     }
@@ -93,23 +88,16 @@
     let picker;
 
     function getAvailableWidth() {
-      // Bubble WebView: safest “true” width is the document viewport
-      const vw = document.documentElement.clientWidth || window.innerWidth || 250;
-      // You wanted “start at 250”, but allow smaller if the WebView is smaller:
-      return Math.min(250, vw);
+      // Let it expand/shrink exactly to whatever Bubble gives the WebView
+      return document.documentElement.clientWidth || window.innerWidth || 250;
     }
 
     function buildPicker() {
       const width = getAvailableWidth();
       const boxHeight = Math.round(width / 2); // 2:1 area
 
-      // Force the picker container to match our computed width to avoid overflow/cutoff
       const pickerHost = document.getElementById("picker");
       pickerHost.style.width = width + "px";
-
-      // Prevent any tiny overflow from borders/shadows triggering scrollbars
-      document.body.style.width = width + "px";
-      document.documentElement.style.width = width + "px";
 
       if (picker) picker.destroy();
 
@@ -132,10 +120,7 @@
       picker.on("color:change", (color) => setUI(color.hexString));
     }
 
-    // Initial build
     buildPicker();
-
-    // Rebuild on resize (Bubble can resize the WebView)
     window.addEventListener("resize", buildPicker);
 
     copyBtn.addEventListener("click", async () => {
