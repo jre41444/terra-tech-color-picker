@@ -1,134 +1,67 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Terra-Tech Color Picker</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Terra-Tech Color Picker</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
+  <script src="https://unpkg.com/@jaames/iro@5"></script>
 
-<style>
-  body {
-    margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    background: transparent;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
-
-  .wrap {
-    width: 300px;
-    text-align: center;
-  }
-
-  #picker {
-    margin: 0 auto 12px auto;
-  }
-
-  .hex-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 6px;
-  }
-
-  .swatch {
-    width: 34px;
-    height: 34px;
-    border-radius: 6px;
-    border: 2px solid #000;
-  }
-
-  input {
-    font-size: 16px;
-    padding: 6px 10px;
-    width: 110px;
-    text-align: center;
-  }
-
-  .hint {
-    font-size: 12px;
-    opacity: 0.65;
-    margin-top: 6px;
-  }
-</style>
+  <style>
+    body{
+      margin:0;
+      background:transparent;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+    }
+    .wrap{
+      padding:10px;
+    }
+  </style>
 </head>
 
 <body>
-<div class="wrap">
-  <div id="picker"></div>
-
-  <div class="hex-row">
-    <div class="swatch" id="swatch"></div>
-    <input id="hex" value="#FF8800" />
+  <div class="wrap">
+    <div id="picker"></div>
   </div>
 
-  <div class="hint">Pick a color. The app will use this HEX.</div>
-</div>
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const startHex = (qs.get("hex") || "ff8800").replace("#","");
 
-<script>
-  const hexInput = document.getElementById("hex");
-  const swatch = document.getElementById("swatch");
+    const picker = new iro.ColorPicker("#picker", {
+      width: 320,
+      color: "#" + startHex,
+      layout: [
+        { component: iro.ui.Box },                       // saturation/value square
+        { component: iro.ui.Slider, options: { sliderType: "hue" } } // hue slider
+      ]
+    });
 
-  // Read optional starting color from ?hex=ff8800
-  const params = new URLSearchParams(window.location.search);
-  const startHex = params.get("hex");
-  const initial = (startHex && /^[0-9a-fA-F]{6}$/.test(startHex))
-    ? "#" + startHex.toUpperCase()
-    : "#FF8800";
+    function sendHex(hexWithHash){
+      const payload = { type: "TT_HEX", hex: hexWithHash.toUpperCase() };
 
-  const picker = new iro.ColorPicker("#picker", {
-    width: 280,
-    color: initial,
-    layout: [
-      { component: iro.ui.Box },
-      { component: iro.ui.Slider, options: { sliderType: "hue" } }
-    ]
-  });
+      // Send to Bubble parent (iframe container)
+      try { window.parent.postMessage(payload, "*"); } catch(e) {}
 
-  function broadcast(hex) {
-    // Send to parent (Bubble)
-    try {
-      window.parent.postMessage(
-        { type: "TERRATECH_COLOR", hex: hex.toUpperCase(), ts: Date.now() },
-        "*"
-      );
-    } catch (e) {}
-  }
-
-  function sync(hex) {
-    const up = hex.toUpperCase();
-    hexInput.value = up;
-    swatch.style.background = up;
-
-    // Keep URL updated for debugging/share
-    const url = new URL(window.location.href);
-    url.searchParams.set("hex", up.replace("#", ""));
-    history.replaceState({}, "", url);
-
-    broadcast(up);
-  }
-
-  // Initial sync + broadcast
-  sync(picker.color.hexString);
-
-  picker.on("color:change", c => sync(c.hexString));
-
-  hexInput.addEventListener("change", () => {
-    picker.color.hexString = hexInput.value;
-    sync(picker.color.hexString);
-  });
-
-  // If the parent asks for the current color, respond.
-  window.addEventListener("message", (event) => {
-    const msg = event.data;
-    if (msg && msg.type === "TERRATECH_REQUEST_COLOR") {
-      broadcast(hexInput.value);
+      // Keep URL updated for debugging (optional)
+      try {
+        const url = new URL(location.href);
+        url.searchParams.set("hex", hexWithHash.replace("#",""));
+        history.replaceState({}, "", url.toString());
+      } catch(e) {}
     }
-  });
-</script>
+
+    // Send initial value
+    sendHex(picker.color.hexString);
+
+    // Send on every change
+    picker.on("color:change", function(color){
+      sendHex(color.hexString);
+    });
+  </script>
 </body>
 </html>
