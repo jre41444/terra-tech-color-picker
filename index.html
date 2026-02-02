@@ -81,47 +81,74 @@
 
   <script src="https://unpkg.com/@jaames/iro@5"></script>
   <script>
+    const wrap = document.getElementById("wrap");
+    const pickerHost = document.getElementById("picker");
     const hexEl = document.getElementById("hex");
     const swatch = document.getElementById("swatch");
     const copyBtn = document.getElementById("copy");
 
     let picker;
+    let lastWidth = 0;
+    let lastHex = "#FF8800";
 
     function getAvailableWidth() {
-      // Let it expand/shrink exactly to whatever Bubble gives the WebView
-      return document.documentElement.clientWidth || window.innerWidth || 250;
+      // Measure the Bubble webview element itself
+      const w = Math.round(wrap.clientWidth || 0);
+      // Guard against 0 during initial layout
+      return w > 0 ? w : Math.round(document.documentElement.clientWidth || window.innerWidth || 250);
     }
 
-    function buildPicker() {
-      const width = getAvailableWidth();
-      const boxHeight = Math.round(width / 2); // 2:1 area
+    function setUI(hex) {
+      const H = hex.toUpperCase();
+      hexEl.value = H;
+      swatch.style.background = H;
+      lastHex = H;
+    }
 
-      const pickerHost = document.getElementById("picker");
+    function buildPicker(force = false) {
+      const width = getAvailableWidth();
+      if (!force && width === lastWidth) return;
+      lastWidth = width;
+
+      // 2:1 gradient area
+      const boxHeight = Math.round(width / 2);
+
+      // Ensure host matches exactly to avoid 1px overflow -> scrollbars
       pickerHost.style.width = width + "px";
+
+      // Preserve current color across rebuilds
+      const currentHex = picker ? picker.color.hexString : (lastHex || "#FF8800");
 
       if (picker) picker.destroy();
 
       picker = new iro.ColorPicker("#picker", {
         width,
-        color: "#FF8800",
+        color: currentHex,
         layout: [
           { component: iro.ui.Box, options: { boxHeight } },
           { component: iro.ui.Slider, options: { sliderType: "hue" } }
         ]
       });
 
-      function setUI(hex) {
-        const H = hex.toUpperCase();
-        hexEl.value = H;
-        swatch.style.background = H;
-      }
-
       setUI(picker.color.hexString);
+
       picker.on("color:change", (color) => setUI(color.hexString));
     }
 
-    buildPicker();
-    window.addEventListener("resize", buildPicker);
+    // Initial build
+    buildPicker(true);
+
+    // ✅ Key fix: observe container width changes (Bubble resizing often won't fire window.resize)
+    if ("ResizeObserver" in window) {
+      const ro = new ResizeObserver(() => buildPicker(false));
+      ro.observe(wrap);
+    } else {
+      // Fallback for older webviews
+      setInterval(() => buildPicker(false), 200);
+    }
+
+    // Keep window resize too (helps in normal browsers)
+    window.addEventListener("resize", () => buildPicker(false));
 
     copyBtn.addEventListener("click", async () => {
       try {
