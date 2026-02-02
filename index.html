@@ -6,22 +6,39 @@
   <title>Terra-Tech Color Picker</title>
 
   <style>
-    /* Remove all scrollbars everywhere */
+    /* Kill scrollbars + default spacing */
     html, body {
       margin: 0;
       padding: 0;
-      overflow: hidden;
+      width: 100%;
       background: transparent;
+      overflow: hidden !important;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
+    /* Also disable any accidental horizontal overflow from shadows/borders */
+    * { box-sizing: border-box; }
+
+    /* Wrapper = EXACTLY the WebView width (no auto-centering) */
     .wrap {
       width: 100%;
-      max-width: 250px;     /* starting width */
-      margin: 0 auto;
+      margin: 0;
+      padding: 0;
       display: flex;
       flex-direction: column;
       gap: 10px;
+      overflow: hidden !important;
+    }
+
+    /* Ensure iro container itself can’t cause overflow */
+    #picker {
+      width: 100%;
+      overflow: hidden !important;
+    }
+
+    /* Helps avoid inline element whitespace/overflow */
+    #picker, #picker * {
+      max-width: 100% !important;
     }
 
     .swatch {
@@ -32,10 +49,9 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.12);
     }
 
-    input,
-    button {
+    input, button {
       width: 100%;
-      box-sizing: border-box;
+      display: block;
     }
 
     input {
@@ -70,46 +86,56 @@
 
   <script src="https://unpkg.com/@jaames/iro@5"></script>
   <script>
-    const wrap = document.getElementById("wrap");
     const hexEl = document.getElementById("hex");
     const swatch = document.getElementById("swatch");
     const copyBtn = document.getElementById("copy");
 
     let picker;
 
+    function getAvailableWidth() {
+      // Bubble WebView: safest “true” width is the document viewport
+      const vw = document.documentElement.clientWidth || window.innerWidth || 250;
+      // You wanted “start at 250”, but allow smaller if the WebView is smaller:
+      return Math.min(250, vw);
+    }
+
     function buildPicker() {
-      const width = wrap.clientWidth || 250;
-      const boxHeight = Math.round(width / 2); // 2:1 ratio
+      const width = getAvailableWidth();
+      const boxHeight = Math.round(width / 2); // 2:1 area
+
+      // Force the picker container to match our computed width to avoid overflow/cutoff
+      const pickerHost = document.getElementById("picker");
+      pickerHost.style.width = width + "px";
+
+      // Prevent any tiny overflow from borders/shadows triggering scrollbars
+      document.body.style.width = width + "px";
+      document.documentElement.style.width = width + "px";
 
       if (picker) picker.destroy();
 
       picker = new iro.ColorPicker("#picker", {
-        width: width,
+        width,
         color: "#FF8800",
         layout: [
-          {
-            component: iro.ui.Box,
-            options: { boxHeight }
-          },
-          {
-            component: iro.ui.Slider,
-            options: { sliderType: "hue" }
-          }
+          { component: iro.ui.Box, options: { boxHeight } },
+          { component: iro.ui.Slider, options: { sliderType: "hue" } }
         ]
       });
 
-      picker.on("color:change", color => {
-        const hex = color.hexString.toUpperCase();
-        hexEl.value = hex;
-        swatch.style.background = hex;
-      });
+      function setUI(hex) {
+        const H = hex.toUpperCase();
+        hexEl.value = H;
+        swatch.style.background = H;
+      }
 
-      const startHex = picker.color.hexString.toUpperCase();
-      hexEl.value = startHex;
-      swatch.style.background = startHex;
+      setUI(picker.color.hexString);
+      picker.on("color:change", (color) => setUI(color.hexString));
     }
 
+    // Initial build
     buildPicker();
+
+    // Rebuild on resize (Bubble can resize the WebView)
     window.addEventListener("resize", buildPicker);
 
     copyBtn.addEventListener("click", async () => {
@@ -118,6 +144,7 @@
         copyBtn.textContent = "Copied!";
         setTimeout(() => copyBtn.textContent = "Copy", 900);
       } catch {
+        hexEl.focus();
         hexEl.select();
       }
     });
