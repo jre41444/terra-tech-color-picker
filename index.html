@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terra-Tech Color Picker</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; padding: 16px; }
+    .wrap { max-width: 420px; margin: 0 auto; }
+    .row { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+    .swatch { width: 56px; height: 56px; border-radius: 12px; border: 2px solid #222; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+    input { flex: 1; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; }
+    button { padding: 12px 14px; font-size: 16px; border-radius: 10px; border: 0; background: #111; color: #fff; }
+    .hint { margin-top: 8px; color: #555; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="picker"></div>
+
+    <div class="row">
+      <div id="swatch" class="swatch"></div>
+      <input id="hex" value="#FF8800" readonly />
+      <button id="copy">Copy</button>
+    </div>
+
+    <div class="hint">
+      Tip: Tap <b>Copy</b>, then return to the app and paste into the HEX field.
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@jaames/iro@5"></script>
+  <script>
+    const hexEl = document.getElementById("hex");
+    const swatch = document.getElementById("swatch");
+    const copyBtn = document.getElementById("copy");
+
+    const picker = new iro.ColorPicker("#picker", {
+      width: 320,
+      color: "#FF8800",
+      layout: [
+        { component: iro.ui.Box },                 // 2D saturation/value square
+        { component: iro.ui.Slider, options: { sliderType: "hue" } } // hue slider
+      ]
+    });
+
+    function setUI(hex) {
+      hexEl.value = hex.toUpperCase();
+      swatch.style.background = hex;
+      // keep URL updated so the chosen hex is “remembered” if reloaded
+      const url = new URL(window.location.href);
+      url.searchParams.set("hex", hex.replace("#",""));
+      history.replaceState({}, "", url);
+    }
+
+    // Load initial color from ?hex=RRGGBB if present
+    const url = new URL(window.location.href);
+    const startHex = url.searchParams.get("hex");
+    if (startHex && /^[0-9a-fA-F]{6}$/.test(startHex)) {
+      picker.color.hexString = "#" + startHex;
+    }
+    setUI(picker.color.hexString);
+
+    picker.on("color:change", (color) => setUI(color.hexString));
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(hexEl.value);
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => copyBtn.textContent = "Copy", 900);
+      } catch (e) {
+        // fallback: select text so user can copy manually
+        hexEl.focus();
+        hexEl.select();
+        copyBtn.textContent = "Select";
+        setTimeout(() => copyBtn.textContent = "Copy", 900);
+      }
+    });
+  </script>
+</body>
+</html>
