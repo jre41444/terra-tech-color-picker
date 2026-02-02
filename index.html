@@ -1,191 +1,117 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Terra-Tech Color Picker</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terra-Tech Color Picker</title>
 
-  <!-- iro.js color picker -->
-  <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
+<script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
 
-  <style>
-    :root{
-      --text:#222;
-      --muted:#666;
-      --bg:#ffffff;
-    }
-    html,body{
-      height:100%;
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-    }
-    .wrap{
-      min-height:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:24px 16px;
-      box-sizing:border-box;
-    }
-    .card{
-      width:min(360px, 92vw);
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:14px;
-    }
-    .row{
-      width:100%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
-    }
-    .swatch{
-      width:36px;
-      height:36px;
-      border-radius:8px;
-      border:2px solid #222;
-      box-sizing:border-box;
-      flex:0 0 auto;
-    }
-    .hex{
-      flex:1 1 auto;
-      height:40px;
-      border-radius:10px;
-      border:1px solid #ccc;
-      padding:0 12px;
-      font-size:16px;
-      font-weight:600;
-      letter-spacing:0.5px;
-      outline:none;
-    }
-    .tip{
-      margin-top:-6px;
-      font-size:12px;
-      color:var(--muted);
-      text-align:center;
-      line-height:1.2;
-    }
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
 
-    /* Terra-Tech style "Calculate" button */
-    .tt-btn{
-      padding:14px 28px;
-      font-size:18px;
-      font-weight:800;
-      letter-spacing:0.6px;
-      border-radius:10px;
-      border:2px solid #7a4a00;
-      background: linear-gradient(to bottom, #ffe28a 0%, #ffd24d 45%, #f5b800 100%);
-      color:#3b2200;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.7),
-        0 2px 4px rgba(0,0,0,0.35);
-      cursor:pointer;
-      user-select:none;
-    }
-    .tt-btn:active{
-      transform: translateY(1px);
-    }
-  </style>
+  .wrap {
+    width: 300px;
+    text-align: center;
+  }
+
+  #picker {
+    margin: 0 auto 12px auto;
+  }
+
+  .hex-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .swatch {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    border: 2px solid #000;
+  }
+
+  input {
+    font-size: 16px;
+    padding: 6px 10px;
+    width: 110px;
+    text-align: center;
+  }
+
+  button {
+    width: 100%;
+    padding: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    background: linear-gradient(#ffd94d, #f5b400);
+    border: 2px solid #6b4b00;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  button:active {
+    transform: scale(0.98);
+  }
+</style>
 </head>
 
 <body>
-  <div class="wrap">
-    <div class="card">
+<div class="wrap">
+  <div id="picker"></div>
 
-      <!-- Color picker mounts here -->
-      <div id="picker"></div>
-
-      <!-- Swatch + HEX input -->
-      <div class="row">
-        <div id="swatch" class="swatch"></div>
-        <input id="hex" class="hex" inputmode="text" autocapitalize="characters" spellcheck="false" />
-      </div>
-
-      <!-- Terra-Tech style button -->
-      <div class="row">
-        <button id="copy" class="tt-btn">CALCULATE</button>
-      </div>
-
-      <div class="tip">Tip: Tap CALCULATE to copy HEX, then return to the app and paste into the HEX field.</div>
-    </div>
+  <div class="hex-row">
+    <div class="swatch" id="swatch"></div>
+    <input id="hex" value="#FF8800" />
   </div>
 
-  <script>
-    // Grab elements
-    const hexEl = document.getElementById("hex");
-    const swatchEl = document.getElementById("swatch");
-    const btnEl = document.getElementById("copy");
+  <button id="calc">CALCULATE</button>
+</div>
 
-    // Read initial color from URL: ?hex=ff8800  (or with #ff8800)
-    const url = new URL(window.location.href);
-    let initialHex = (url.searchParams.get("hex") || "FF8800").toString().trim();
-    initialHex = initialHex.replace("#", "");
-    if (!/^[0-9a-fA-F]{6}$/.test(initialHex)) initialHex = "FF8800";
-    initialHex = "#" + initialHex.toUpperCase();
+<script>
+  const hexInput = document.getElementById("hex");
+  const swatch = document.getElementById("swatch");
+  const button = document.getElementById("calc");
 
-    // Create picker
-    const picker = new iro.ColorPicker("#picker", {
-      width: 320,
-      color: initialHex,
-      layout: [
-        { component: iro.ui.Box },
-        { component: iro.ui.Slider, options: { sliderType: "hue" } }
-      ]
-    });
+  const picker = new iro.ColorPicker("#picker", {
+    width: 280,
+    color: "#FF8800",
+    layout: [
+      { component: iro.ui.Box },
+      { component: iro.ui.Slider, options: { sliderType: "hue" } }
+    ]
+  });
 
-    function setUI(hex) {
-      const up = hex.toUpperCase();
-      hexEl.value = up;
-      swatchEl.style.background = up;
+  function sync(hex) {
+    hexInput.value = hex.toUpperCase();
+    swatch.style.background = hex;
+  }
 
-      // keep URL updated so the choice is "recordable" / shareable
-      const u = new URL(window.location.href);
-      u.searchParams.set("hex", up.replace("#", ""));
-      history.replaceState({}, "", u);
+  picker.on("color:change", c => sync(c.hexString));
+
+  hexInput.addEventListener("change", () => {
+    picker.color.hexString = hexInput.value;
+  });
+
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(hexInput.value);
+      button.textContent = "SAVED ✓";
+      setTimeout(() => button.textContent = "CALCULATE", 900);
+    } catch {
+      alert("Copy failed — please copy manually.");
     }
-
-    // Initialize UI
-    setUI(picker.color.hexString);
-
-    // When picker changes, update UI
-    picker.on("color:change", (color) => {
-      setUI(color.hexString);
-    });
-
-    // Allow typing a hex and updating picker
-    hexEl.addEventListener("change", () => {
-      let v = (hexEl.value || "").trim().toUpperCase();
-      if (!v.startsWith("#")) v = "#" + v;
-      if (/^#[0-9A-F]{6}$/.test(v)) {
-        picker.color.hexString = v;
-        setUI(v);
-      } else {
-        // revert to picker if invalid
-        setUI(picker.color.hexString);
-      }
-    });
-
-    // Button copies HEX to clipboard (keeps your existing workflow)
-    btnEl.addEventListener("click", async () => {
-      const val = hexEl.value.toUpperCase();
-      try {
-        await navigator.clipboard.writeText(val);
-        const old = btnEl.textContent;
-        btnEl.textContent = "COPIED!";
-        setTimeout(() => btnEl.textContent = old, 900);
-      } catch (e) {
-        // fallback: select the text so user can copy manually
-        hexEl.focus();
-        hexEl.select();
-        const old = btnEl.textContent;
-        btnEl.textContent = "SELECTED";
-        setTimeout(() => btnEl.textContent = old, 900);
-      }
-    });
-  </script>
+  });
+</script>
 </body>
 </html>
