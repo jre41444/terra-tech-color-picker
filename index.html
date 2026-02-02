@@ -11,10 +11,11 @@
     html, body{
       margin:0;
       padding:0;
-      background:transparent;
-      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       width:100%;
       height:100%;
+      background:transparent;
+      overflow:hidden; /* 🔑 kill scrollbars */
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
     body{
@@ -27,33 +28,37 @@
       display:flex;
       flex-direction:column;
       align-items:center;
-      gap:10px;
+      gap:8px;
+      max-height:100%;
     }
 
     #picker{
       background:transparent;
+      flex-shrink:0;
     }
 
     .color-info{
       display:flex;
       align-items:center;
-      gap:10px;
+      gap:8px;
+      flex-shrink:0;
     }
 
     .swatch{
-      width:28px;
-      height:28px;
+      width:24px;
+      height:24px;
       border-radius:6px;
       background:#000;
       box-shadow:0 0 0 1px rgba(0,0,0,0.15);
     }
 
     .hex{
-      font-size:14px;
+      font-size:13px;
       letter-spacing:0.04em;
       font-weight:600;
       color:#222;
       user-select:all;
+      white-space:nowrap;
     }
   </style>
 </head>
@@ -72,19 +77,35 @@
     const qs = new URLSearchParams(location.search);
     const startHex = (qs.get("hex") || "ff8800").replace("#","");
 
-    const PICKER_WIDTH = 360;
-    const PICKER_HEIGHT = Math.round(PICKER_WIDTH / 2);
+    // Fit picker to viewport height
+    const VH = window.innerHeight;
+
+    // Layout math (tuned to avoid overflow)
+    const WHEEL_SIZE = Math.min(160, VH * 0.35);
+    const WHEEL_THICKNESS = 14;
+
+    const BOX_WIDTH = Math.min(340, VH * 0.7);
+    const BOX_HEIGHT = Math.round(BOX_WIDTH / 2);
 
     const swatch = document.getElementById("swatch");
     const hexText = document.getElementById("hexText");
 
     const picker = new iro.ColorPicker("#picker", {
-      width: PICKER_WIDTH,
+      width: BOX_WIDTH,
       color: "#" + startHex,
       layout: [
         {
+          component: iro.ui.Wheel,
+          options: {
+            width: WHEEL_SIZE,
+            borderWidth: WHEEL_THICKNESS
+          }
+        },
+        {
           component: iro.ui.Box,
-          options: { boxHeight: PICKER_HEIGHT }
+          options: {
+            boxHeight: BOX_HEIGHT
+          }
         }
       ]
     });
@@ -97,25 +118,19 @@
 
     function sendHex(hexWithHash){
       const payload = { type: "TT_HEX", hex: hexWithHash.toUpperCase() };
-
       try { window.parent.postMessage(payload, "*"); } catch(e) {}
-
-      try {
-        const url = new URL(location.href);
-        url.searchParams.set("hex", hexWithHash.replace("#",""));
-        history.replaceState({}, "", url.toString());
-      } catch(e) {}
     }
 
-    // Initial state
     updateUI(picker.color.hexString);
     sendHex(picker.color.hexString);
 
-    // On change
     picker.on("color:change", function(color){
       updateUI(color.hexString);
       sendHex(color.hexString);
     });
+
+    // Safety: prevent resize scrollbars
+    window.addEventListener("resize", () => location.reload());
   </script>
 </body>
 </html>
