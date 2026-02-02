@@ -8,7 +8,6 @@
   <script src="https://unpkg.com/@jaames/iro@5"></script>
 
   <style>
-    /* No white backgrounds anywhere */
     html, body{
       margin:0;
       padding:0;
@@ -18,30 +17,66 @@
       height:100%;
     }
 
-    /* Center the picker, but keep everything transparent */
     body{
       display:flex;
       align-items:center;
       justify-content:center;
     }
 
-    /* No padding box / no background */
+    .picker-wrap{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+    }
+
     #picker{
       background:transparent;
+    }
+
+    .color-info{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .swatch{
+      width:28px;
+      height:28px;
+      border-radius:6px;
+      background:#000;
+      box-shadow:0 0 0 1px rgba(0,0,0,0.15);
+    }
+
+    .hex{
+      font-size:14px;
+      letter-spacing:0.04em;
+      font-weight:600;
+      color:#222;
+      user-select:all;
     }
   </style>
 </head>
 
 <body>
-  <div id="picker"></div>
+  <div class="picker-wrap">
+    <div id="picker"></div>
+
+    <div class="color-info">
+      <div class="swatch" id="swatch"></div>
+      <div class="hex" id="hexText">#FFFFFF</div>
+    </div>
+  </div>
 
   <script>
     const qs = new URLSearchParams(location.search);
     const startHex = (qs.get("hex") || "ff8800").replace("#","");
 
-    // 2:1 rectangular gradient area (width:height = 2:1)
     const PICKER_WIDTH = 360;
     const PICKER_HEIGHT = Math.round(PICKER_WIDTH / 2);
+
+    const swatch = document.getElementById("swatch");
+    const hexText = document.getElementById("hexText");
 
     const picker = new iro.ColorPicker("#picker", {
       width: PICKER_WIDTH,
@@ -49,21 +84,22 @@
       layout: [
         {
           component: iro.ui.Box,
-          options: {
-            boxHeight: PICKER_HEIGHT   // makes the SV area rectangular (2:1)
-          }
+          options: { boxHeight: PICKER_HEIGHT }
         }
-        // No sliders at all
       ]
     });
+
+    function updateUI(hexWithHash){
+      const hex = hexWithHash.toUpperCase();
+      swatch.style.background = hex;
+      hexText.textContent = hex;
+    }
 
     function sendHex(hexWithHash){
       const payload = { type: "TT_HEX", hex: hexWithHash.toUpperCase() };
 
-      // Send to Bubble parent (iframe container)
       try { window.parent.postMessage(payload, "*"); } catch(e) {}
 
-      // Keep URL updated for debugging (optional)
       try {
         const url = new URL(location.href);
         url.searchParams.set("hex", hexWithHash.replace("#",""));
@@ -71,11 +107,13 @@
       } catch(e) {}
     }
 
-    // Send initial value
+    // Initial state
+    updateUI(picker.color.hexString);
     sendHex(picker.color.hexString);
 
-    // Send on every change
+    // On change
     picker.on("color:change", function(color){
+      updateUI(color.hexString);
       sendHex(color.hexString);
     });
   </script>
