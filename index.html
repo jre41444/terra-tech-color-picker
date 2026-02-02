@@ -14,7 +14,7 @@
       width:100%;
       height:100%;
       background:transparent;
-      overflow:hidden;
+      overflow:hidden; /* no scrollbars */
       font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
@@ -25,38 +25,40 @@
     }
 
     .picker-card{
-      width:320px;
-      height:260px; /* 🔑 fixed height = no scroll */
+      width:300px;       /* match your WebView width */
+      height:240px;      /* keep safely under your WebView height */
       display:flex;
       flex-direction:column;
-      justify-content:space-between;
       align-items:center;
-      gap:6px;
+      justify-content:flex-start;
+      gap:8px;
     }
 
-    #picker{
-      width:100%;
-    }
+    #picker{ background:transparent; }
 
     .color-info{
       display:flex;
       align-items:center;
       gap:10px;
+      margin-top:2px;
     }
 
     .swatch{
-      width:26px;
-      height:26px;
+      width:24px;
+      height:24px;
       border-radius:6px;
       box-shadow:0 0 0 1px rgba(0,0,0,0.2);
+      background:#000;
+      flex:0 0 auto;
     }
 
     .hex{
       font-size:13px;
-      font-weight:600;
+      font-weight:700;
       letter-spacing:0.04em;
       color:#222;
       user-select:all;
+      white-space:nowrap;
     }
   </style>
 </head>
@@ -82,30 +84,22 @@
       width: 300,
       color: "#" + startHex,
       layout: [
-        {
-          component: iro.ui.Box,
-          options: {
-            boxHeight: 150   // main SV area
-          }
-        },
-        {
-          component: iro.ui.Slider,
-          options: {
-            sliderType: "hue",
-            height: 12     // thin embedded hue bar (PS-style)
-          }
-        }
+        { component: iro.ui.Box, options: { boxHeight: 150 } },
+        { component: iro.ui.Slider, options: { sliderType: "hue", height: 12 } }
       ]
     });
 
-    function update(hex){
-      const h = hex.toUpperCase();
-      swatch.style.background = h;
-      hexText.textContent = h;
+    function update(hexWithHash){
+      const hex = hexWithHash.toUpperCase();
+      swatch.style.background = hex;
+      hexText.textContent = hex;
 
+      try { window.parent.postMessage({ type:"TT_HEX", hex }, "*"); } catch(e) {}
       try {
-        window.parent.postMessage({ type:"TT_HEX", hex:h }, "*");
-      } catch(e){}
+        const url = new URL(location.href);
+        url.searchParams.set("hex", hex.replace("#",""));
+        history.replaceState({}, "", url.toString());
+      } catch(e) {}
     }
 
     update(picker.color.hexString);
